@@ -40,25 +40,58 @@ def set_architecture(arch):
     global architecture
     architecture = arch
 
-def fitness (ch):
+def fitness(ch):
     env = gym.make("LunarLander-v3", render_mode=None)
-
-    observation, _ = env.reset()
-    racum = 0
-    while True:
+    reward_list = []
+    
+    for _ in range(20):  
+        observation, _ = env.reset()
+        racum = 0  
+        # Se crea el modelo una sola vez por episodio:
         model = MLP(get_architecture())
         model.from_chromosome(ch)
-        action = policy(model, observation)
-        observation, reward, terminated, truncated, _ = env.step(action)
         
-        racum += reward
+        while True:
+            action = policy(model, observation)
+            # Observation: [x, y, vx, vy, angle, angular_velocity, left_leg, right_leg]
+            observation, reward, terminated, truncated, _ = env.step(action)
+            racum += reward  # Recompensa del entorno
+            
+            # Penalización progresiva del ángulo y velocidad angular
+            racum -= abs(observation[4]) * 50  
+            racum -= abs(observation[5]) * 50  
+            
+            # Recompensa/Penalización según la acción:
+            if action == 2:  # Motor principal (vertical)
+                if observation[3] < -0.1:  # Si la velocidad vertical (vy) es negativa (caída)
+                    racum += 50  
+                else:
+                    racum += 10
+            elif action in [1, 3]:  
+                if abs(observation[4]) > 0.1:  # Si el ángulo es significativo
+                    racum += 30  
+                else:
+                    racum += 5   
+            elif action == 0:  # No hacer nada
+                racum -= 50
+                
+            # Bonificación por aterrizaje exitoso (ambas piernas en contacto)
+            if observation[6] == 1 and observation[7] == 1:
+                racum += 20
 
-        if terminated or truncated:
-            return racum
+            if terminated or truncated:
+                reward_list.append(racum)
+                break
+
+    return sum(reward_list) / len(reward_list)
+
+
 
 def policy (model, observation):
     s = model.forward(observation)
-    action = np.argmax(s)
+    # action = np.argmax(s)
+    probabilities = np.exp(s) / np.sum(np.exp(s))  # Softmax
+    action = np.random.choice(len(s), p=probabilities)
     return action
 
 def select (pop, T): # devuelve un individuo seleccionado por torneo, devuelve una copia para evitar efectos laterales
