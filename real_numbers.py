@@ -96,7 +96,7 @@ def fitness (ch):
             model.from_chromosome(ch)
             action = policy(model, observation)
             observation, reward, terminated, truncated, _ = env.step(action)
-            
+            reward = custom_reward(observation, action, terminated)
             racum += reward
 
             if terminated or truncated:
@@ -171,3 +171,44 @@ def evolve_himmelblau (pop, fit, pmut, pcross=0.7, ngen=100, T=2, trace=0):
 
     initial_pop.insert(0, historical_best)
     return initial_pop
+
+def custom_reward(state, action, done):
+    """
+    Custom reward function for the Lunar Lander environment.
+    
+    Parameters:
+        state (list): The state vector from the environment.
+        action (int): The action taken by the agent.
+        done (bool): Whether the episode has ended.
+    
+    Returns:
+        float: The computed reward.
+    """
+    # Extract state variables
+    pos_x, pos_y, vel_x, vel_y, angle, ang_vel, left_leg, right_leg = state
+
+    # Reward Components
+    reward = 0.0
+
+    # **1. Distance to Landing Pad (Encourage moving towards the center)**
+    reward -= 10 * abs(pos_x)  # Penalize being far from the landing zone
+
+    # **2. Stable Descent (Encourage slow and steady landings)**
+    reward -= 100 * abs(vel_x)  # Penalize horizontal velocity
+    reward -= 100 * abs(vel_y)  # Penalize vertical velocity
+
+    # **3. Proper Orientation (Encourage upright landing)**
+    reward -= 50 * abs(angle)  # Penalize tilting too much
+
+    # **4. Leg Contact (Encourage a safe landing)**
+    if left_leg or right_leg:
+        reward += 100  # Bonus for making contact safely
+
+    # **6. Successful Landing Bonus**
+    if done:
+        if abs(pos_x) < 0.1 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1 and abs(angle) < 0.1:
+            reward += 1000  # Big reward for a safe landing
+        else:
+            reward -= 500  # Big penalty for a crash
+
+    return reward
