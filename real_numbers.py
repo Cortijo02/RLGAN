@@ -96,7 +96,7 @@ def fitness (ch):
             model.from_chromosome(ch)
             action = policy(model, observation)
             observation, reward, terminated, truncated, _ = env.step(action)
-            reward = custom_reward(observation, action, terminated)
+            # reward = custom_reward(observation, action, terminated)
             racum += reward
 
             if terminated or truncated:
@@ -160,6 +160,8 @@ def evolve_himmelblau (pop, fit, pmut, pcross=0.7, ngen=100, T=2, trace=0):
             show(current_best)
             historical_best = current_best
             best_fitness = sorted_fitnesses[0]
+            np.save("current_best_chromosome.npy", historical_best)
+            np.save("current_best_architecture.npy", architecture)
             # print(f"[{i:>4}] New Best: {best_fitness:>5.2f}")
 
         initial_pop = mutated_pop
