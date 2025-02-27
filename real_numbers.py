@@ -10,6 +10,10 @@ from MLP import MLP
 from tqdm import tqdm
 import concurrent.futures
 
+from loky import get_reusable_executor
+
+
+EXECUTOR = get_reusable_executor()
 
 # Define operadores de números reales
 
@@ -54,7 +58,7 @@ def polynomial_mutation(ind, pmut, eta=2):
     return ind_copy
 
 
-def gaussian_mutation(ind, pmut, sigma=0.2):
+def gaussian_mutation(ind, pmut, sigma=0.2): # Probar 0.05
     ind_copy = [*ind]
     for i in range(len(ind)):
         if random.random() < pmut:
@@ -88,7 +92,8 @@ def fitness (ch):
     env = gym.make("LunarLander-v3", render_mode=None)
 
     rewards_list = []
-    for _ in range(10):
+    # En las diapos pone *3*
+    for _ in range(3):
         observation, _ = env.reset()
         racum = 0
         while True:
@@ -122,10 +127,34 @@ def show(ind):
 
     env.close()
 
+"""
 def policy (model, observation):
     s = model.forward(observation)
     action = np.argmax(s)
     return action
+"""
+
+def policy(model, observation, epsilon=0.01):
+    """
+    ε-greedy policy: selects the optimal action with probability (1 - epsilon)
+    and a random action with probability epsilon.
+    
+    Args:
+    - model: the model with a forward method to predict action values.
+    - observation: the current input (observed state).
+    - epsilon: exploration probability (between 0 and 1).
+
+    Returns:
+    - action: the selected action.
+    """
+    # Copiada de otro grupo
+    s = model.forward(observation) 
+    if np.random.rand() < epsilon:  
+        action = np.random.randint(len(s))
+    else: 
+        action = np.argmax(s)
+    return action
+
 
 def select (pop, T): # devuelve un individuo seleccionado por torneo, devuelve una copia para evitar efectos laterales
     # pop se supone ya ordenada por fitness
@@ -133,8 +162,7 @@ def select (pop, T): # devuelve un individuo seleccionado por torneo, devuelve u
     return [*pop[min(selected)]]
 
 def sort_pop (pop, fit): # devuelve una tupla: la población ordenada por fitness, y la lista de fitness.
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        fitness_list = list(executor.map(fit, pop))
+    fitness_list = EXECUTOR.map(fit, pop)
     sorted_pop_fitness = sorted(zip(pop, fitness_list), key=lambda x: x[1], reverse=True)
     return [x[1] for x in sorted_pop_fitness], [x[0] for x in sorted_pop_fitness]
 
