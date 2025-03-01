@@ -31,6 +31,7 @@ class MLP:
         self.laccuracy = [] # hold all traced accuracies to draw graph
         
     def sigm (self, neta):
+        neta = np.clip(neta, -500, 500)
         return 1.0 / (1.0 + np.exp(-neta))
     
     def forward (self, x): # fast forward (optimized in time, but not use to train!)
